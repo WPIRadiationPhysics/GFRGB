@@ -5,41 +5,45 @@
   selected region of exposed film images.
 %}
 
+%% Initialize Global Vars
+global Film_Area vertex;
+
 %% Image Acquisition
 % Image Multi-selection, set as cell array
-[imgFileNames, imgFilePath] = uigetfile('*.tif', 'Choose image file', 'MultiSelect', 'on');
-imgFileNames = cellstr(strcat(imgFilePath,'\',imgFileNames));
+[Film_FileName, Film_FilePath] = uigetfile('*.tif', 'Choose image file', 'MultiSelect', 'on');
+Film_FileName = cellstr(strcat(Film_FilePath, '\', Film_FileName));
+
 % Quit if none selected
-if isempty(imgFileNames)
-    clear
-    return
+if isempty(Film_FileName)
+    clear; return;
 end
+
 % Check filenames for tiff-type extension
-for i = 1:length(imgFileNames)
-  [dirPath, fileBaseName{i}, extType] = fileparts(imgFileNames{i});
+for i = 1:length(Film_FileName)
+  [dirPath, fileBaseName{i}, extType] = fileparts(Film_FileName{i});
   if (strcmpi(extType, '.tif') == 0)
     fprintf('File is not a tiff (*.tif) image.\n\n')
     clear
     return
   end
-  imgFileNames{i} = strcat(dirPath, fileBaseName{i}, extType);
+  Film_FileName{i} = strcat(dirPath, fileBaseName{i}, extType);
 end
+Film_Img = imread(Film_FileName{1}); % Or only this one
+
 % Average multiple selections
-RGB_Img = imread(imgFileNames{1}); % Or only this one
-if length(imgFileNames) > 1
-  for i = 2:length(imgFileNames)
-    RGB_Img = imadd(RGB_Img,imread(imgFileNames{i}));
-  end
-  RGB_Img = RGB_Img/length(imgFileNames);
-end
+% if length(imgFileNames) > 1
+%   for i = 2:length(imgFileNames)
+%     RGB_Img = imadd(RGB_Img,imread(imgFileNames{i}));
+%   end
+%   RGB_Img = RGB_Img/length(imgFileNames);
+% end
 
 %% Image Display and Selection
 % Create loop of area selection dialogs
 good_area_choice = 0;
 while (good_area_choice == 0)
-    
   % Plot image in axes
-  imshow(RGB_Img)
+  imshow(Film_Img)
   
   % Drag rectangle across desired area and create temp lines
   rect = getrect;
@@ -61,60 +65,50 @@ while (good_area_choice == 0)
   end
 end
 % Work now only with selected area
-RGB_Area = RGB_Img(ymin:ymin+height,xmin:xmin+width,:);
+Film_Area = Film_Img(ymin:ymin+height,xmin:xmin+width,:);
 
 %% Image analysis
-% Get mini-matrix dimensions
-area_dlg_prompt = {'Enter averaging area length:','Enter averaging area height:'};
-area_dlg_title = 'Input';
-area_dlg_dims = {'2','2'};
-area_dlg_dims = inputdlg(area_dlg_prompt,area_dlg_title,1,area_dlg_dims);
-xAreaLength = str2num(area_dlg_dims{1}); yAreaLength = str2num(area_dlg_dims{2});
 % Area-pixel reconstruction
-newMxRows=height-(yAreaLength-1);
-newMxCols=width-(xAreaLength-1);
-newMx=zeros(newMxRows,newMxCols,3);
+CourseAreaSide = 2;
+MxRows = height-(CourseAreaSide-1);
+MxCols = width-(CourseAreaSide-1);
+Mx = zeros(MxRows, MxCols,3);
+vertex_area = zeros(3,3);
+vertex = zeros(3,3);
+
 % Main Loop
 RGB_i = {'Red' 'Green' 'Blue'};
 for channelNum=1:3
-  % Single-pixel reconstruction
-  fprintf('\n%s channel:\n==============\n', RGB_i{channelNum});
-  CoordMinima(channelNum) = min(min(RGB_Area(:,:,channelNum)));
-  CoordMaxima(channelNum) = max(max(RGB_Area(:,:,channelNum)));
-  % Match each pixel value to min/max value
-  for i=1:height
-    for j=1:width
-      if (RGB_Area(i,j,channelNum) == CoordMinima(channelNum))
-        fprintf('(%d,%d) is the PIXEL minima %d.\n',j,i,CoordMinima(channelNum));
-      end
-      if (RGB_Area(i,j,channelNum) == CoordMaxima(channelNum))
-        fprintf('(%d,%d) is the PIXEL maxima %d.\n',j,i,CoordMinima(channelNum));
-      end
-    end
-  end
-  % Construct the values of the new matrix by analyzing each area
-  for i=1:newMxRows
-    for j=1:newMxCols
-      newMx(i,j,channelNum)=sum(sum(RGB_Area(i:(i+(yAreaLength-1)),j:(j+(xAreaLength-1)), channelNum)))/(xAreaLength*yAreaLength);
-    end
-  end
-  % Minima/Maxima of all areas
-  AreaMinima(channelNum) = min(min(newMx(:,:,channelNum)));
-  AreaMaxima(channelNum) = max(max(newMx(:,:,channelNum)));
-  for i=1:newMxRows
-    for j=1:newMxCols
-      if (newMx(i,j,channelNum) == AreaMinima(channelNum))
-        fprintf('(%d,%d) is the %dx%d AREA minima %d.\n',j,i,xAreaLength,yAreaLength,AreaMinima(channelNum));
-      end
-      if (newMx(i,j,channelNum) == AreaMaxima(channelNum))
-        fprintf('(%d,%d) is the %dx%d AREA maxima %d.\n\n',j,i,xAreaLength,yAreaLength,AreaMinima(channelNum));
-      end
-    end
-  end
+   % Construct the values of the new matrix by analyzing each area
+   for j=1:MxRows
+     for i=1:MxCols
+       Mx(j, i, channelNum) = sum(sum(Film_Area(j:(j+(CourseAreaSide-1)),i:(i+(CourseAreaSide-1)), channelNum)))/(CourseAreaSide^2);
+     end
+   end
 
-  % Construct 3 subplots, for each analysis
-  subplot(3,1,channelNum)
-  surf(RGB_Area(:,:,channelNum), double(RGB_Area(:,:,channelNum)))
-  %contour(RGB_Area(:,:,channelNum))
-  titleString = sprintf('%s Channel', RGB_i{channelNum}); title(titleString);
+  % Course-grain peak location
+  vertex_area(3,channelNum) = min(min(Mx(:,:,channelNum)));
+  for j=1:MxRows
+    for i=1:MxCols
+      if (Mx(j,i,channelNum) == vertex_area(3,channelNum))
+          vertex_area(1,channelNum) = j; vertex_area(2,channelNum) = i;
+      end
+    end
+  end
+  
+  % Global peak location at peak of side x side vertex_area
+  vertex(3,channelNum) = min(min(Film_Area(vertex_area(1,channelNum):vertex_area(1,channelNum)+CourseAreaSide-1, ...
+      vertex_area(2,channelNum):vertex_area(2,channelNum)+CourseAreaSide-1, channelNum)));
+  for j=1:CourseAreaSide
+    for i=1:CourseAreaSide
+      if (Film_Area(vertex_area(1,channelNum)+j-1, vertex_area(2,channelNum)+i-1, channelNum) == vertex(3,channelNum))
+          vertex(1,channelNum) = j + vertex_area(1,channelNum) - 1;
+          vertex(2,channelNum) = i + vertex_area(2,channelNum) - 1;
+      end
+    end
+  end
 end
+
+%% Initialize Analyzer GUI
+close
+gfrgb_gui
