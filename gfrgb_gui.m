@@ -18,16 +18,43 @@ else
 end
 % End initialization code
 
+function gfrgb_gui_OutputFcn(hObject, eventdata, handles, varargin)
 
 % Draw circle of selected radius
 function circleDraw(hObject, handles)
 global vertex;
 r = str2double(get(handles.var_r, 'String'));
-rectangle('Position', [vertex(2)-r vertex(1)-r 2*r 2*r], ...
+dpi = str2double(get(handles.var_dpi, 'String'));
+r_px = r*dpi/25.4; r_pxTol = r*dpi/25.4; % get r +- rTol in px
+
+% Create circle with, well, rectangle()
+rectangle('Position', [vertex(2)-r_px vertex(1)-r_px 2*r_px 2*r_px], ...
 'Curvature', [1 1], 'Parent', handles.axes_FilmArea)
 % Update vertex text
 vertex_str = strcat('(', num2str(vertex(2,1)), ',', num2str(vertex(1,1)), ')');
 set(handles.text_vertex, 'String', vertex_str);
+
+function plot_OD(hobject, handles)
+% Acquire vars
+global Film_Area vertex I;
+r = str2double(get(handles.var_r,'String'));
+rTol = str2double(get(handles.var_rTol,'String'));
+dpi = str2double(get(handles.var_dpi,'String'));
+dots = r*dpi/25.4; dotsTol = rTol*dpi/25.4; % get r +- rTol in px
+rgb = get(handles.text_rgb, 'String');
+if ( strcmp(rgb,'Red') ) rgb_i=1; elseif ( strcmp(rgb, 'Green') ) rgb_i=2; else rgb_i=3; end
+I_numpoints = 360; %100 data points
+I = zeros(I_numpoints);
+dtheta = 2*pi/I_numpoints;
+theta=0:dtheta:2*pi;
+
+% Loop through whole angle
+for i_theta=1:1:I_numpoints;
+    I_y = round(vertex(1,rgb_i) - dots*sin(theta(i_theta)));
+    I_x = round(vertex(2,rgb_i) + dots*cos(theta(i_theta)));
+    try I(i_theta) = Film_Area(I_y, I_x, rgb_i); catch; end
+end
+plot(1:360, I, 'Parent', handles.axes_OD);
 
 
 % --- Executes just before gfrgb_gui is made visible.
@@ -153,8 +180,19 @@ guidata(hObject, handles);
 
 % --- Executes on slider_r movement
 function slider_r_Callback(hObject, eventdata, handles)
+global Film_Area
+
+% Acquire state variables
 slider_r = get(hObject,'Value');
+rgb = get(handles.text_rgb, 'String');
+if ( strcmp(rgb,'Red') ) i=1; elseif ( strcmp(rgb, 'Green') ) i=2; else i=3; end
 set(handles.var_r,'String', slider_r);
+
+% Display R/G/B channel of selected area
+imshow(Film_Area(:,:,i), 'Parent', handles.axes_FilmArea);
+hold on;
+circleDraw(hObject, handles)
+hold off;
 guidata(hObject, handles);
 
 
@@ -192,13 +230,14 @@ end
 
 % --- Executes on button press in button_recalculate.
 function button_recalculate_Callback(hObject, eventdata, handles)
+global Film_Area
 % Acquire state variables
 slider_r_max = get(handles.slider_r, 'Max');
 r = str2double(get(handles.var_r,'String'));
 rTol = str2double(get(handles.var_rTol,'String'));
 dpi = str2double(get(handles.var_dpi,'String'));
 rgb = get(handles.text_rgb, 'String');
-if ( strcmp(rgb,'Red') ) i=1; elseif ( strcmp(rgb, 'Green') ) i=2; else i=3; end
+if ( strcmp(rgb,'Red') ) rgb_i=1; elseif ( strcmp(rgb, 'Green') ) rgb_i=2; else rgb_i=3; end
 
 % Check for numeric input
 if ( isnan(r) ) set(handles.var_r,'String',0); errordlg('r must be a number', 'Error'); end
@@ -211,8 +250,11 @@ elseif ( r > slider_r_max ) set(handles.var_r,'String',slider_r_max);
 end
 
 % Display R/G/B channel of selected area
-imshow(Film_Area(:,:,i), 'Parent', handles.axes_FilmArea);
+imshow(Film_Area(:,:,rgb_i), 'Parent', handles.axes_FilmArea);
 hold on;
 circleDraw(hObject, handles)
 hold off;
+
+% Construct Optical Density plot
+plot_OD(hObject, handles)
 guidata(hObject, handles);

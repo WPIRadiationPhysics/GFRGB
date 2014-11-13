@@ -6,7 +6,7 @@
 %}
 
 %% Initialize Global Vars
-global Film_Area vertex;
+global Film_Area vertex I;
 
 %% Image Acquisition
 % Image Multi-selection, set as cell array
@@ -29,14 +29,6 @@ for i = 1:length(Film_FileName)
   Film_FileName{i} = strcat(dirPath, fileBaseName{i}, extType);
 end
 Film_Img = imread(Film_FileName{1}); % Or only this one
-
-% Average multiple selections
-% if length(imgFileNames) > 1
-%   for i = 2:length(imgFileNames)
-%     RGB_Img = imadd(RGB_Img,imread(imgFileNames{i}));
-%   end
-%   RGB_Img = RGB_Img/length(imgFileNames);
-% end
 
 %% Image Display and Selection
 % Create loop of area selection dialogs
