@@ -56,7 +56,6 @@ while (good_area_choice == 0)
       continue;
   end
 end
-% Work now only with selected area
 Film_Area = Film_Img(ymin:ymin+height,xmin:xmin+width,:);
 
 %% Image analysis

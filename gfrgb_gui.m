@@ -34,7 +34,7 @@ rectangle('Position', [vertex(2)-r_px vertex(1)-r_px 2*r_px 2*r_px], ...
 vertex_str = strcat('(', num2str(vertex(2,1)), ',', num2str(vertex(1,1)), ')');
 set(handles.text_vertex, 'String', vertex_str);
 
-function plot_OD(hobject, handles)
+function plot_OD(hObject, handles)
 % Acquire vars
 global Film_Area vertex I;
 r = str2double(get(handles.var_r,'String'));
@@ -62,10 +62,8 @@ function gfrgb_gui_OpeningFcn(hObject, eventdata, handles, varargin)
 global Film_Area;
 % Display Red channel of selected area
 imshow(Film_Area(:,:,1), 'Parent', handles.axes_FilmArea);
-hold on;
-circleDraw(hObject, handles)
-hold off;
-
+hold on; circleDraw(hObject, handles); hold off;
+plot_OD(hObject, handles)
 
 
 % --------------------------------------------------------------------
