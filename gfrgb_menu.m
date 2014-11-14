@@ -23,7 +23,7 @@ end
 % --- Executes just before gfrgb_menu is made visible.
 function gfrgb_menu_OpeningFcn(hObject, eventdata, handles, varargin)
 % Acquire vars
-global Film_Img Film_FileName;
+global Film_Img Film_Area Film_FileName;
 Film_Img = 1;
 Film_FileName = '';
 
@@ -42,7 +42,7 @@ varargout{1} = handles.output;
 
 % --- Executes on button press in button_tifffs.
 function button_tifffs_Callback(hObject, eventdata, handles)
-global Film_Img Film_FileName rect;
+global Film_Img Film_Area Film_Area_Prev Film_FileName rect;
 
 % Image Single-selection, set as cell array
 [Film_FileName, Film_FilePath] = uigetfile('*.tif', ...
@@ -69,14 +69,14 @@ if ~isempty(Film_FileName)
         Film_Img = imread(Film_FileName{1}); % Or only this one
         imshow(Film_Img, 'Parent', handles.axes_FileImg);
         set(handles.text_filename, 'String', Film_FileName{1});
-       status_string = 'Image loaded';
-       rect = 0;
+        status_string = 'Image loaded';
+        rect = 0; Film_Area = Film_Img;
+        Film_Area_Prev = Film_Area;
     end
 else
     % Image selection canceled
     status_string = 'Canceled file selection';
 end
-
 set(handles.text_update, 'String', status_string);
 guidata(hObject, handles);
 
@@ -84,37 +84,41 @@ guidata(hObject, handles);
 % --- Executes on button press in button_zoomin.
 function button_zoomin_Callback(hObject, eventdata, handles)
 % Acquire vars
-global Film_Img Film_Area Film_FileName rect;
+global Film_Area_Prev Film_Area Film_FileName rect;
 
 if isempty(Film_FileName)    
-    status_string = 'Cannot zoom in; no image file selected';
+    status_string = 'Cannot zoom in; no selected image';
 else
     % Update status test
     set(handles.text_update, 'String', 'Click and drag a region; hold Shift for a square');
     guidata(hObject, handles);
 
     % Drag rectangle across desired area within boundaries of figure
+%     xmin_zoom = 0; ymin_zoom = 0; width_zoom = 1; height_zoom = 1;
+    if ~( rect==0 ) Film_Area_Prev = Film_Area; end
     try
-    rect = getrect;
-    xmin = round(rect(1)); ymin = round(rect(2));
-    width = round(rect(3)); height = round(rect(4));
-    while ( ~( xmin>0 && ymin>0 && xmin+width<=length(Film_Img(1,:,1)) && ymin+height<=length(Film_Img(:,1,1)) ) )
+    rect = getrect(handles.axes_FileImg);
+%     xmin = xmin_zoom+round(rect(1)); ymin = ymin_zoom+round(rect(2));
+%     width = round(width_zoom*rect(3)); height = round(height_zoom*rect(4));
+    xmin = round(rect(1)); ymin = round(rect(2)); width = round(rect(3)); height = round(rect(4));
+    while ( ~( xmin>0 && ymin>0 && xmin+width<=length(Film_Area(1,:,1)) && ymin+height<=length(Film_Area(:,1,1)) ) )
         status_string = 'Please keep the range within the image';
         set(handles.text_update, 'String', status_string);
         rect = getrect;
-        xmin = round(rect(1)); ymin = round(rect(2));
-        width = round(rect(3)); height = round(rect(4));
+        xmin = round(rect(1)); ymin = round(rect(2)); width = round(rect(3)); height = round(rect(4));
+%         xmin = xmin_zoom+round(rect(1)); ymin = ymin_zoom+round(rect(2));
+%         width = round(width_zoom*rect(3)); height = round(height_zoom*rect(4));
     end
-    status_string = strcat('width: ', num2str(width), ', height: ', num2str(height));
-    line([xmin xmin+width],[ymin ymin])
-    line([xmin+width xmin+width],[ymin ymin+height])
-    line([xmin xmin+width],[ymin+height ymin+height])
-    line([xmin xmin],[ymin ymin+height])
+    status_string = strcat(num2str(width), 'x', num2str(height), ...
+        ' region at (', num2str(xmin), ', ', num2str(ymin), ')');
 
     % Replace image with zoom
-    Film_Area = Film_Img(ymin:ymin+height,xmin:xmin+width,:);
+    Film_Area = Film_Area_Prev(ymin:ymin+height,xmin:xmin+width,:);
     cla(handles.axes_FileImg,'reset');
     imshow(Film_Area, 'Parent', handles.axes_FileImg);
+    
+    % Does nothing if unzoomed, reconstructs zoom rectangle otherwise
+%     rect(1) = xmin; rect(2) = ymin; rect(3) = width; rect(4) = height;
     catch
         status_string = 'Canceled';
     end
@@ -128,18 +132,19 @@ guidata(hObject, handles);
 % --- Executes on button press in button_zoomout.
 function button_zoomout_Callback(hObject, eventdata, handles)
 % Acquire vars
-global Film_Img Film_FileName rect;
+global Film_Img Film_Area Film_Area_Prev Film_FileName rect;
 
 % Redisplay original file image if one exists  
 if isempty(Film_FileName)    
-    status_string = 'Cannot zoom out; no image file selected';
+    status_string = 'Cannot zoom out; no selected image';
     set(handles.text_update, 'String', status_string);
 else
     if ( rect==0 )
         status_string = 'Image already zoomed out';
         set(handles.text_update, 'String', status_string);
     else
-        rect = 0;
+        rect = 0; Film_Area = Film_Img;
+        Film_Area_Prev = Film_Area;
         cla(handles.axes_FileImg,'reset');
         imshow(Film_Img, 'Parent', handles.axes_FileImg);
         status_string = 'Image zoomed out';
@@ -156,7 +161,7 @@ global Film_Area vertex Film_FileName rect;
 
 valid_choice = 1;
 if isempty(Film_FileName)
-    status_string = 'Cannot calculate; no image to analyze';
+    status_string = 'Cannot calculate; no selected image';
     set(handles.text_update, 'String', status_string);
     guidata(hObject, handles);
 else
