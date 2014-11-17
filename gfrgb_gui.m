@@ -20,46 +20,80 @@ end
 
 function gfrgb_gui_OutputFcn(hObject, eventdata, handles, varargin)
 
-% Draw circle of selected radius
+% Draw 3 circles: of selected radius, and +/- tolerance
 function circleDraw(hObject, handles)
+% Acquire vars
 global vertex;
 r = str2double(get(handles.var_r, 'String'));
+rTol = str2double(get(handles.var_rTol, 'String'));
 dpi = str2double(get(handles.var_dpi, 'String'));
-r_px = r*dpi/25.4; r_pxTol = r*dpi/25.4; % get r +- rTol in px
+r_px = r*dpi/25.4; r_pxTol = rTol*dpi/25400; % get r +- rTol in px
 
-% Create circle with, well, rectangle()
+% Create circles with... rectangle(), because MATLAB
 rectangle('Position', [vertex(2)-r_px vertex(1)-r_px 2*r_px 2*r_px], ...
-'Curvature', [1 1], 'Parent', handles.axes_FilmArea)
+          'Curvature', [1 1], 'Parent', handles.axes_FilmArea)
+rectangle('Position', [vertex(2)-(r_px+r_pxTol) vertex(1)-(r_px+r_pxTol) 2*(r_px+r_pxTol) 2*(r_px+r_pxTol)], ...
+          'Curvature', [1 1], 'Parent', handles.axes_FilmArea)
+rectangle('Position', [vertex(2)-(r_px-r_pxTol) vertex(1)-(r_px-r_pxTol) 2*(r_px-r_pxTol) 2*(r_px-r_pxTol)], ...
+          'Curvature', [1 1], 'Parent', handles.axes_FilmArea)
+
 % Update vertex text
 vertex_str = strcat('(', num2str(vertex(2,1)), ',', num2str(vertex(1,1)), ')');
 set(handles.text_vertex, 'String', vertex_str);
 
+
 function plot_OD(hObject, handles)
 % Acquire vars
-global Film_Area vertex I;
+global Film_Area vertex debuggy;
 r = str2double(get(handles.var_r,'String'));
-rTol = str2double(get(handles.var_rTol,'String'));
+rTol = str2double(get(handles.var_rTol,'String'))/1000;
 dpi = str2double(get(handles.var_dpi,'String'));
-dots = r*dpi/25.4; dotsTol = rTol*dpi/25.4; % get r +- rTol in px
+r_px = r*dpi/25.4; r_pxTol = rTol*dpi/25400; % get r +- rTol in px
 rgb = get(handles.text_rgb, 'String');
 if ( strcmp(rgb,'Red') ) rgb_i=1; elseif ( strcmp(rgb, 'Green') ) rgb_i=2; else rgb_i=3; end
 I_numpoints = 360; %100 data points
-I = zeros(I_numpoints);
+I_avg = zeros(I_numpoints); I_r = zeros(I_numpoints);
 dtheta = 2*pi/I_numpoints;
-theta=0:dtheta:2*pi;
+theta=0:dtheta:(2*pi-dtheta);
 
-% Loop through whole angle
+% 0.1 um increments from r +/- rTol
+rInc = 0.01/1000; rSteps = 2*rTol/rInc;
+
+% Loop through whole angle;
 for i_theta=1:1:I_numpoints;
-    I_y = round(vertex(1,rgb_i) - dots*sin(theta(i_theta)));
-    I_x = round(vertex(2,rgb_i) + dots*cos(theta(i_theta)));
-    try I(i_theta) = Film_Area(I_y, I_x, rgb_i); catch; end
+    angleAverage = 0;
+    for rStep_i = 0:rSteps
+        try
+            % Get r_i in px
+            r_pxi = (r - rTol + rStep_i*rInc)*dpi/25.4;
+            I_y = round(vertex(1, rgb_i) - r_pxi*sin(theta(i_theta)));
+            I_x = round(vertex(2, rgb_i) + r_pxi*cos(theta(i_theta)));
+            I_avg(i_theta) = double(I_avg(i_theta) + Film_Area(I_y, I_x, rgb_i)/(rSteps+1));
+        catch
+            continue;
+        end
+    end
+    I_y = round(vertex(1, rgb_i) - r_px*sin(theta(i_theta)));
+    I_x = round(vertex(2, rgb_i) + r_px*cos(theta(i_theta)));
+    I_r(i_theta) = Film_Area(I_y, I_x, rgb_i);
 end
-plot(1:360, I, 'Parent', handles.axes_OD);
+plot(0:359, I_r, 'b-', 'Parent', handles.axes_OD); hold on;
+plot(0:359, I_avg, 'r-', 'Parent', handles.axes_OD); hold off;
+axis(handles.axes_OD, [0 359 min(min(I_r(:,1),I_avg(:,1))) max(max(I_r(:,1),I_avg(:,1)))]);
+xlabel(handles.axes_OD, 'Degrees')
+ylabel(handles.axes_OD, 'Grayscale (abs)')
+
 
 
 % --- Executes just before gfrgb_gui is made visible.
 function gfrgb_gui_OpeningFcn(hObject, eventdata, handles, varargin)
+% Acquire vars
 global Film_Area;
+
+% Precise tolerance slider step (0.01 to 1 in steps of 0.01)
+sliderStep = [0.1 0.1]/(10 - 0.1);
+set(handles.slider_rTol, 'SliderStep', sliderStep);
+
 % Display Red channel of selected area
 imshow(Film_Area(:,:,1), 'Parent', handles.axes_FilmArea);
 hold on; circleDraw(hObject, handles); hold off;
@@ -178,16 +212,15 @@ guidata(hObject, handles);
 
 % --- Executes on slider_r movement
 function slider_r_Callback(hObject, eventdata, handles)
+% Acquire vars
 global Film_Area
-
-% Acquire state variables
 slider_r = get(hObject,'Value');
 rgb = get(handles.text_rgb, 'String');
-if ( strcmp(rgb,'Red') ) i=1; elseif ( strcmp(rgb, 'Green') ) i=2; else i=3; end
+if ( strcmp(rgb,'Red') ) rgb_i=1; elseif ( strcmp(rgb, 'Green') ) rgb_i=2; else rgb_i=3; end
 set(handles.var_r,'String', slider_r);
 
 % Display R/G/B channel of selected area
-imshow(Film_Area(:,:,i), 'Parent', handles.axes_FilmArea);
+imshow(Film_Area(:,:,rgb_i), 'Parent', handles.axes_FilmArea);
 hold on;
 circleDraw(hObject, handles)
 hold off;
@@ -208,13 +241,24 @@ end
 
 % --- Executes on slider_rTol movement
 function slider_rTol_Callback(hObject, eventdata, handles)
+% Acquire vars
+global Film_Area
 slider_rTol = get(hObject,'Value');
-set(handles.var_rTol,'String', slider_rTol);
+rgb = get(handles.text_rgb, 'String');
+if ( strcmp(rgb,'Red') ) rgb_i=1; elseif ( strcmp(rgb, 'Green') ) rgb_i=2; else rgb_i=3; end
+set(handles.var_rTol, 'String', slider_rTol);
+
+% Display R/G/B channel of selected area
+imshow(Film_Area(:,:,rgb_i), 'Parent', handles.axes_FilmArea);
+hold on;
+circleDraw(hObject, handles)
+hold off;
 guidata(hObject, handles);
 
 
 % --- Executes on slider_dpi movement
 function slider_dpi_Callback(hObject, eventdata, handles)
+% dpi++
 slider_dpi = get(hObject,'Value');
 set(handles.var_dpi,'String', slider_dpi);
 guidata(hObject, handles);
@@ -260,7 +304,14 @@ guidata(hObject, handles);
 
 % --- Executes on button press in button_contour
 function button_contour_Callback(hObject, eventdata, handles)
+% Acquire vars
+global Film_Area;
+rgb = get(handles.text_rgb, 'String');
+if ( strcmp(rgb,'Red') ) rgb_i=1; elseif ( strcmp(rgb, 'Green') ) rgb_i=2; else rgb_i=3; end
 
+% Plot contour map of Film_Area in new window
+figure;
+contour(Film_Area(:,:,rgb_i))
 
 % --- Executes on button press in source_point
 function source_point_Callback(hObject, eventdata, handles)
@@ -268,3 +319,7 @@ function source_point_Callback(hObject, eventdata, handles)
 
 % --- Executes on button press in source_seed
 function source_seed_Callback(hObject, eventdata, handles)
+
+
+% --- Executes on button press in button_crit.
+function button_crit_Callback(hObject, eventdata, handles)
