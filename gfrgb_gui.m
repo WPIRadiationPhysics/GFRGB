@@ -391,21 +391,38 @@ ContourFig = figure('Name', 'contourPlot'); contourPlot = gca;
 contour(Film_Area(:, :, rgb_i));
 xlabel(contourPlot, 'x (relative to selection)')
 ylabel(contourPlot, 'y (relative to selection)')
+title(contourPlot, 'Contour map of exposure')
 set(contourPlot, 'YDir', 'rev')
 
 
 % --- Executes on button press in button_crit.
 function button_crit_Callback(hObject, eventdata, handles)
 %Acquire vars
-global Film_Area I_r;
-angleFrom = str2num(get(handles.angleFrom, 'String'));
-angleTo = str2num(get(handles.angleFromTo, 'String'));
+global Film_Area vertex;
+r = str2double(get(handles.var_r,'String'));
+rgb = get(handles.text_rgb, 'String');
+if ( strcmp(rgb,'Red') ) rgb_i=1; elseif ( strcmp(rgb, 'Green') ) rgb_i=2; else rgb_i=3; end
+dpi = str2double(get(handles.var_dpi,'String'));
+angleFrom = str2num(get(handles.var_angleFrom, 'String'));
+angleTo = str2num(get(handles.var_angleTo, 'String'));
 
 % Find critical angle of bias
-[I_peak, theta_c] = max(I_r);
+% [I_peak, theta_c] = max(I_r);
+% for now, 90 deg
+theta_c = pi/2;
+
+% Acquire dataset of intensity
+I_px = r*dpi/25.4;
+for i=0:I_px
+    I_theta(i+1) = Film_Area(vertex(2,rgb_i)-i*sin(theta_c), vertex(1,rgb_i)+i*cos(theta_c), rgb_i);
+end
 
 % Create plot of I(r) for theta=theta_c
-
+IrFig = figure('Name', 'seedIntensityPlot'); seedIntensityPlot = gca;
+plot(I_theta)
+xlabel(seedIntensityPlot, 'r (px)')
+ylabel(seedIntensityPlot, 'Grayscale (abs)')
+title(seedIntensityPlot, 'Intensity perpendicular to tilt')
 
 % --- Executes during object creation, after setting all properties.
 function var_angleFrom_CreateFcn(hObject, eventdata, handles)
