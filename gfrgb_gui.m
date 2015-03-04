@@ -17,24 +17,25 @@ else
     gui_mainfcn(gui_State, varargin{:});
 end
 % End initialization code
-
 function gfrgb_gui_OutputFcn(hObject, eventdata, handles, varargin)
+
 
 % Draw 3 circles: of selected radius, and +/- tolerance
 function circleDraw(hObject, handles)
 % Acquire vars
-global vertex;
+global vertex dpi;
 r = str2double(get(handles.var_r, 'String'));
 rTol = str2double(get(handles.var_rTol, 'String'));
-dpi = str2double(get(handles.var_dpi, 'String'));
 r_px = r*dpi/25.4; r_pxTol = rTol*dpi/25400; % get r +- rTol in px
 
 % Create circles with... rectangle(), because MATLAB
-rectangle('Position', [vertex(2)-r_px vertex(1)-r_px 2*r_px 2*r_px], ...
+rectangle('Position', [vertex(2,1)-r_px vertex(1,1)-r_px 2*r_px 2*r_px], ...
           'Curvature', [1 1], 'Parent', handles.axes_FilmArea)
-rectangle('Position', [vertex(2)-(r_px+r_pxTol) vertex(1)-(r_px+r_pxTol) 2*(r_px+r_pxTol) 2*(r_px+r_pxTol)], ...
+rectangle('Position', [vertex(2,1)-(r_px+r_pxTol) vertex(1,1)-(r_px+r_pxTol) 2*(r_px+r_pxTol) 2*(r_px+r_pxTol)], ...
           'Curvature', [1 1], 'Parent', handles.axes_FilmArea)
-rectangle('Position', [vertex(2)-(r_px-r_pxTol) vertex(1)-(r_px-r_pxTol) 2*(r_px-r_pxTol) 2*(r_px-r_pxTol)], ...
+rectangle('Position', [vertex(2,1)-(r_px-r_pxTol) vertex(1,1)-(r_px-r_pxTol) 2*(r_px-r_pxTol) 2*(r_px-r_pxTol)], ...
+          'Curvature', [1 1], 'Parent', handles.axes_FilmArea)
+rectangle('Position', [vertex(2,1)-0.5 vertex(1,1)-0.5 1 1], ...
           'Curvature', [1 1], 'Parent', handles.axes_FilmArea)
 
 % Update vertex text
@@ -44,10 +45,9 @@ set(handles.text_vertex, 'String', vertex_str);
 
 function plot_OD(hObject, handles)
 % Acquire vars
-global Film_Area vertex I_r;
+global Film_Area vertex I_r dpi;
 r = str2double(get(handles.var_r,'String'));
 rTol = str2double(get(handles.var_rTol,'String'))/1000;
-dpi = str2double(get(handles.var_dpi,'String'));
 r_px = r*dpi/25.4; r_pxTol = rTol*dpi/25400; % get r +- rTol in px
 rgb = get(handles.text_rgb, 'String');
 if ( strcmp(rgb,'Red') ) rgb_i=1; elseif ( strcmp(rgb, 'Green') ) rgb_i=2; else rgb_i=3; end
@@ -162,20 +162,6 @@ end
 
 
 % --- Executes during object creation, after setting all properties
-function var_dpi_CreateFcn(hObject, eventdata, handles)
-if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
-    set(hObject,'BackgroundColor','white');
-end
-
-
-% --- Executes during object creation, after setting all properties
-function slider_dpi_CreateFcn(hObject, eventdata, handles)
-if isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
-    set(hObject,'BackgroundColor',[.9 .9 .9]);
-end
-
-
-% --- Executes during object creation, after setting all properties
 function var_angleTo_CreateFcn(hObject, eventdata, handles)
 if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
     set(hObject,'BackgroundColor','white');
@@ -281,7 +267,7 @@ end
 function slider_rTol_Callback(hObject, eventdata, handles)
 % Acquire vars
 global Film_Area
-slider_rTol = get(hObject,'Value');
+slider_rTol = sprintf('%0.1f', get(hObject,'Value'));
 rgb = get(handles.text_rgb, 'String');
 if ( strcmp(rgb,'Red') ) rgb_i=1; elseif ( strcmp(rgb, 'Green') ) rgb_i=2; else rgb_i=3; end
 set(handles.var_rTol, 'String', slider_rTol);
@@ -316,22 +302,13 @@ if ( angleTo ~= floor(angleTo) )
 end
 
 
-% --- Executes on slider_dpi movement
-function slider_dpi_Callback(hObject, eventdata, handles)
-% dpi++
-slider_dpi = get(hObject,'Value');
-set(handles.var_dpi,'String', slider_dpi);
-guidata(hObject, handles);
-
-
 % --- Executes on button press in button_recalculate.
 function button_recalculate_Callback(hObject, eventdata, handles)
-global Film_Area
+global Film_Area dpi
 % Acquire state variables
 slider_r_max = get(handles.slider_r, 'Max');
 r = str2double(get(handles.var_r,'String'));
 rTol = str2double(get(handles.var_rTol,'String'));
-dpi = str2double(get(handles.var_dpi,'String'));
 rgb = get(handles.text_rgb, 'String');
 if ( strcmp(rgb,'Red') ) rgb_i=1; elseif ( strcmp(rgb, 'Green') ) rgb_i=2; else rgb_i=3; end
 % Angles as well, if selected
@@ -350,16 +327,16 @@ if ( isnan(rTol) )
     set(handles.var_rTol,'String', 1);
     errordlg('Tolerance must be a number', 'Error');
 end
-if ( isnan(dpi) )
-    set(handles.var_dpi,'String', 72);
-    errordlg('dpi must be a number', 'Error');
-end
+% if ( isnan(dpi) )
+%     set(handles.var_dpi,'String', 72);
+%     errordlg('dpi must be a number', 'Error');
+% end
 if ( isnan(angleFrom) )
-    set(handles.var_dpi,'String', 0);
+    set(handles.var_angleFrom,'String', 0);
     errordlg('Initial angle must be a number', 'Error');
 end
 if ( isnan(angleTo) )
-    set(handles.var_dpi,'String', 360);
+    set(handles.var_angleTo,'String', 360);
     errordlg('Final angle must be a number', 'Error');
 end
 
@@ -398,11 +375,11 @@ set(contourPlot, 'YDir', 'rev')
 % --- Executes on button press in button_crit.
 function button_crit_Callback(hObject, eventdata, handles)
 %Acquire vars
-global Film_Area vertex;
+global Film_Area vertex dpi;
 r = str2double(get(handles.var_r,'String'));
 rgb = get(handles.text_rgb, 'String');
 if ( strcmp(rgb,'Red') ) rgb_i=1; elseif ( strcmp(rgb, 'Green') ) rgb_i=2; else rgb_i=3; end
-dpi = str2double(get(handles.var_dpi,'String'));
+% dpi = str2double(get(handles.var_dpi,'String'));
 angleFrom = str2num(get(handles.var_angleFrom, 'String'));
 angleTo = str2num(get(handles.var_angleTo, 'String'));
 
@@ -451,3 +428,50 @@ else
     set(handles.button_crit, 'Enable', 'off');
     guidata(hObject, handles);
 end
+
+% --- Executes on slider movement.
+function var_vertSlide_Callback(hObject, eventdata, handles)
+% hObject    handle to var_vertSlide (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hints: get(hObject,'Value') returns position of slider
+%        get(hObject,'Min') and get(hObject,'Max') to determine range of slider
+
+
+% --- Executes during object creation, after setting all properties.
+function var_vertSlide_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to var_vertSlide (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: slider controls usually have a light gray background.
+if isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor',[.9 .9 .9]);
+end
+
+
+% --- Executes on slider movement.
+function var_horizSlide_Callback(hObject, eventdata, handles)
+% hObject    handle to var_horizSlide (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hints: get(hObject,'Value') returns position of slider
+%        get(hObject,'Min') and get(hObject,'Max') to determine range of slider
+
+
+% --- Executes during object creation, after setting all properties.
+function var_horizSlide_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to var_horizSlide (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: slider controls usually have a light gray background.
+if isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor',[.9 .9 .9]);
+end
+
+
+% --- Executes on button press in button_print.
+function button_print_Callback(hObject, eventdata, handles)
