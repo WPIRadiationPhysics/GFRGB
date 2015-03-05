@@ -1,3 +1,4 @@
+%% INITIALIZATION
 function varargout = gfrgb_gui(varargin)
 % Begin initialization code
 gui_Singleton = 1;
@@ -20,6 +21,7 @@ end
 function gfrgb_gui_OutputFcn(hObject, eventdata, handles, varargin)
 
 
+%% AUXILIARY FUNCTIONS
 % Draw 3 circles: of selected radius, and +/- tolerance
 function circleDraw(hObject, handles)
 % Acquire vars
@@ -98,13 +100,17 @@ xlabel(handles.axes_OD, 'Degrees')
 ylabel(handles.axes_OD, 'Grayscale (abs)')
 
 
-
+%% GUI FUNCTIONS
 % --- Executes just before gfrgb_gui is made visible.
 function gfrgb_gui_OpeningFcn(hObject, eventdata, handles, varargin)
 % Acquire vars
 global Film_Area;
 
-% Precise tolerance slider step (0.01 to 1 in steps of 0.01)
+% % Vertex xy adjust slider step (0 to 1 in steps of 0.01)
+% sliderStepX = [0.1 0.1]/(10 - 0.1);
+% set(handles.slider_rTol, 'SliderStep', sliderStepX);
+
+% Precise tolerance slider step (0.1 to 10 in steps of 0.1)
 sliderStep = [0.1 0.1]/(10 - 0.1);
 set(handles.slider_rTol, 'SliderStep', sliderStep);
 
@@ -133,6 +139,7 @@ end
 delete(handles.figure1)
 
 
+%% ITEMIZED CALLBACKS
 % --- Executes during object creation, after setting all properties
 function var_r_CreateFcn(hObject, eventdata, handles)
 if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
@@ -167,6 +174,23 @@ if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgr
     set(hObject,'BackgroundColor','white');
 end
 
+% --- Executes during object creation, after setting all properties.
+function var_angleFrom_CreateFcn(hObject, eventdata, handles)
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end
+
+% --- Executes during object creation, after setting all properties.
+function slider_FilmVertexY_CreateFcn(hObject, eventdata, handles)
+if isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor',[.9 .9 .9]);
+end
+
+% --- Executes during object creation, after setting all properties.
+function slider_FilmVertexX_CreateFcn(hObject, eventdata, handles)
+if isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor',[.9 .9 .9]);
+end
 
 % --- Executes on button press in toggle_red.
 function toggle_red_Callback(hObject, eventdata, handles)
@@ -222,7 +246,7 @@ if ( get(hObject, 'Value') == 1 )
     set(handles.toggle_red, 'Value', 0);
     set(handles.toggle_green, 'Value', 0);
     set(handles.text_rgb, 'String', 'Blue');
-    vertex_str = strcat('(', num2str(vertex(2,3)), ',', num2str(vertex(1,3)), ')');
+    vertex_str = strcat('(', num2str(vertex(2,3)), ', ', num2str(vertex(1,3)), ')');
     set(handles.text_vertex, 'String', vertex_str);
     
     % Display Blue channel of selected area
@@ -232,6 +256,13 @@ if ( get(hObject, 'Value') == 1 )
     hold off;
 end
 guidata(hObject, handles);
+
+% --- Executes on slider movement.
+function slider_FilmVertexY_Callback(hObject, eventdata, handles)
+
+
+% --- Executes on slider movement.
+function slider_FilmVertexX_Callback(hObject, eventdata, handles)
 
 
 % --- Executes on slider_r movement
@@ -327,10 +358,6 @@ if ( isnan(rTol) )
     set(handles.var_rTol,'String', 1);
     errordlg('Tolerance must be a number', 'Error');
 end
-% if ( isnan(dpi) )
-%     set(handles.var_dpi,'String', 72);
-%     errordlg('dpi must be a number', 'Error');
-% end
 if ( isnan(angleFrom) )
     set(handles.var_angleFrom,'String', 0);
     errordlg('Initial angle must be a number', 'Error');
@@ -401,12 +428,6 @@ xlabel(seedIntensityPlot, 'r (px)')
 ylabel(seedIntensityPlot, 'Grayscale (abs)')
 title(seedIntensityPlot, 'Intensity perpendicular to tilt')
 
-% --- Executes during object creation, after setting all properties.
-function var_angleFrom_CreateFcn(hObject, eventdata, handles)
-if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
-    set(hObject,'BackgroundColor','white');
-end
-
 
 % --- Executes when selected object is changed in source_buttons.
 function source_buttons_SelectionChangeFcn(hObject, eventdata, handles)
@@ -429,49 +450,49 @@ else
     guidata(hObject, handles);
 end
 
-% --- Executes on slider movement.
-function var_vertSlide_Callback(hObject, eventdata, handles)
-% hObject    handle to var_vertSlide (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-
-% Hints: get(hObject,'Value') returns position of slider
-%        get(hObject,'Min') and get(hObject,'Max') to determine range of slider
-
-
-% --- Executes during object creation, after setting all properties.
-function var_vertSlide_CreateFcn(hObject, eventdata, handles)
-% hObject    handle to var_vertSlide (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    empty - handles not created until after all CreateFcns called
-
-% Hint: slider controls usually have a light gray background.
-if isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
-    set(hObject,'BackgroundColor',[.9 .9 .9]);
-end
-
-
-% --- Executes on slider movement.
-function var_horizSlide_Callback(hObject, eventdata, handles)
-% hObject    handle to var_horizSlide (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-
-% Hints: get(hObject,'Value') returns position of slider
-%        get(hObject,'Min') and get(hObject,'Max') to determine range of slider
-
-
-% --- Executes during object creation, after setting all properties.
-function var_horizSlide_CreateFcn(hObject, eventdata, handles)
-% hObject    handle to var_horizSlide (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    empty - handles not created until after all CreateFcns called
-
-% Hint: slider controls usually have a light gray background.
-if isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
-    set(hObject,'BackgroundColor',[.9 .9 .9]);
-end
-
 
 % --- Executes on button press in button_print.
 function button_print_Callback(hObject, eventdata, handles)
+% Acquire vars
+global vertex Film_Area;
+r = str2double(get(handles.var_r, 'String'));
+rTol = str2double(get(handles.var_rTol, 'String'));
+rgb = get(handles.text_rgb, 'String');
+if ( strcmp(rgb, 'Red') ) rgb_i=1; elseif ( strcmp(rgb, 'Green') ) rgb_i=2; else rgb_i=3; end
+
+% Create data directory: get date and time
+var_now = clock;
+data_dir_string = strcat(num2str(var_now(1)), '-', num2str(var_now(3)), '-', ...
+                         num2str(var_now(2)), '_', num2str(var_now(4)), '-', ...
+                         num2str(var_now(5)), '-', num2str(floor(var_now(6))));
+mkdir(data_dir_string);
+
+% Output vars to text file in data dir
+datafile = strcat(data_dir_string, '/vars.txt');
+datafileID = fopen(datafile, 'wt');
+datafile_vars = strcat('Vertex: (', num2str(vertex(2, rgb_i)), ', ', num2str(vertex(1, rgb_i)), ')\n');
+fprintf(datafileID, '%s Channel\n', rgb);
+fprintf(datafileID, datafile_vars);
+fprintf(datafileID,'Radius: %.2f +/- %.2f mm\n', r, rTol);
+fclose(datafileID);
+
+% Output OD fig in data dir
+datafile = strcat(data_dir_string, '/OD_theta.fig');
+fh = figure;
+opos = get(handles.axes_OD, 'outerposition');
+set(handles.axes_OD, 'outerposition', [0 0 1 1]);
+copyobj(handles.axes_OD, fh);
+saveas(fh, datafile, 'fig');
+set(handles.axes_OD, 'outerposition', opos);
+close(fh);
+
+% Reconstruct contour plot and save
+ContourFig = figure('Name', 'contourPlot'); contourPlot = gca;
+contour(Film_Area(:, :, rgb_i));
+xlabel(contourPlot, 'x (relative to selection)')
+ylabel(contourPlot, 'y (relative to selection)')
+title(contourPlot, 'Contour map of exposure')
+set(contourPlot, 'YDir', 'rev')
+datafile = strcat(data_dir_string, '/Contour.fig');
+saveas(ContourFig, datafile, 'fig');
+close(fh);
