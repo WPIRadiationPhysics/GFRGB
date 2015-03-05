@@ -104,11 +104,20 @@ ylabel(handles.axes_OD, 'Grayscale (abs)')
 % --- Executes just before gfrgb_gui is made visible.
 function gfrgb_gui_OpeningFcn(hObject, eventdata, handles, varargin)
 % Acquire vars
-global Film_Area;
+global Film_Area vertex;
 
 % % Vertex xy adjust slider step (0 to 1 in steps of 0.01)
-% sliderStepX = [0.1 0.1]/(10 - 0.1);
-% set(handles.slider_rTol, 'SliderStep', sliderStepX);
+[Film_yMax Film_xMax] = size(Film_Area(:, :, 1));
+sliderStepY = [1 1]/(Film_yMax - 0);
+set(handles.slider_FilmVertexY, 'SliderStep', sliderStepY);
+sliderStepX = [1 1]/(Film_xMax - 0);
+set(handles.slider_FilmVertexX, 'SliderStep', sliderStepX);
+
+% Set slider max and vertex values
+set(handles.slider_FilmVertexY, 'max', Film_yMax);
+set(handles.slider_FilmVertexX, 'max', Film_xMax);
+set(handles.slider_FilmVertexY, 'value', Film_yMax - vertex(1,1));
+set(handles.slider_FilmVertexX, 'value', vertex(2,1));
 
 % Precise tolerance slider step (0.1 to 10 in steps of 0.1)
 sliderStep = [0.1 0.1]/(10 - 0.1);
@@ -259,16 +268,46 @@ guidata(hObject, handles);
 
 % --- Executes on slider movement.
 function slider_FilmVertexY_Callback(hObject, eventdata, handles)
+% Acquire vars
+global Film_Area vertex;
+rgb = get(handles.text_rgb, 'String');
+if ( strcmp(rgb,'Red') ) rgb_i=1; elseif ( strcmp(rgb, 'Green') ) rgb_i=2; else rgb_i=3; end
 
+% Get value from slider and change vertex
+[Film_yMax Film_xMax] = size(Film_Area(:, :, 1));
+sliderY = get(hObject,'Value');
+if ( sliderY <= Film_yMax && sliderY >= 0 ); vertex(1, rgb_i) = Film_yMax - sliderY; end
+
+% Display R/G/B channel of selected area
+imshow(Film_Area(:,:,rgb_i), 'Parent', handles.axes_FilmArea);
+hold on;
+circleDraw(hObject, handles)
+hold off;
+guidata(hObject, handles);
 
 % --- Executes on slider movement.
 function slider_FilmVertexX_Callback(hObject, eventdata, handles)
+% Acquire vars
+global Film_Area vertex;
+rgb = get(handles.text_rgb, 'String');
+if ( strcmp(rgb,'Red') ) rgb_i=1; elseif ( strcmp(rgb, 'Green') ) rgb_i=2; else rgb_i=3; end
 
+% Get value from slider and change vertex
+[Film_yMax Film_xMax] = size(Film_Area(:, :, 1));
+sliderX = get(hObject,'Value');
+if ( sliderX <= Film_xMax && sliderX >= 0 ); vertex(2, rgb_i) = sliderX; end
+
+% Display R/G/B channel of selected area
+imshow(Film_Area(:,:,rgb_i), 'Parent', handles.axes_FilmArea);
+hold on;
+circleDraw(hObject, handles)
+hold off;
+guidata(hObject, handles);
 
 % --- Executes on slider_r movement
 function slider_r_Callback(hObject, eventdata, handles)
 % Acquire vars
-global Film_Area
+global Film_Area;
 slider_r = get(hObject,'Value');
 rgb = get(handles.text_rgb, 'String');
 if ( strcmp(rgb,'Red') ) rgb_i=1; elseif ( strcmp(rgb, 'Green') ) rgb_i=2; else rgb_i=3; end
