@@ -1,3 +1,4 @@
+%% INITIALIZATION
 function varargout = gfrgb_gui(varargin)
 % Begin initialization code
 gui_Singleton = 1;
@@ -17,26 +18,58 @@ else
     gui_mainfcn(gui_State, varargin{:});
 end
 % End initialization code
-
 function gfrgb_gui_OutputFcn(hObject, eventdata, handles, varargin)
 
+
+%% AUXILIARY FUNCTIONS
 % Draw 3 circles: of selected radius, and +/- tolerance
 function circleDraw(hObject, handles)
 % Acquire vars
-global vertex;
+global vertex dpi Film_Area;
 r = str2double(get(handles.var_r, 'String'));
 rTol = str2double(get(handles.var_rTol, 'String'));
-dpi = str2double(get(handles.var_dpi, 'String'));
 r_px = r*dpi/25.4; r_pxTol = rTol*dpi/25400; % get r +- rTol in px
+rgb = get(handles.text_rgb, 'String');
+if ( strcmp(rgb,'Red') ) rgb_i=1; elseif ( strcmp(rgb, 'Green') ) rgb_i=2; else rgb_i=3; end
 
 % Create circles with... rectangle(), because MATLAB
-rectangle('Position', [vertex(2)-r_px vertex(1)-r_px 2*r_px 2*r_px], ...
+rectangle('Position', [vertex(2,1)-r_px vertex(1,1)-r_px 2*r_px 2*r_px], ...
           'Curvature', [1 1], 'Parent', handles.axes_FilmArea)
-rectangle('Position', [vertex(2)-(r_px+r_pxTol) vertex(1)-(r_px+r_pxTol) 2*(r_px+r_pxTol) 2*(r_px+r_pxTol)], ...
+rectangle('Position', [vertex(2,1)-(r_px+r_pxTol) vertex(1,1)-(r_px+r_pxTol) 2*(r_px+r_pxTol) 2*(r_px+r_pxTol)], ...
           'Curvature', [1 1], 'Parent', handles.axes_FilmArea)
-rectangle('Position', [vertex(2)-(r_px-r_pxTol) vertex(1)-(r_px-r_pxTol) 2*(r_px-r_pxTol) 2*(r_px-r_pxTol)], ...
+rectangle('Position', [vertex(2,1)-(r_px-r_pxTol) vertex(1,1)-(r_px-r_pxTol) 2*(r_px-r_pxTol) 2*(r_px-r_pxTol)], ...
+          'Curvature', [1 1], 'Parent', handles.axes_FilmArea)
+rectangle('Position', [vertex(2,1)-0.5 vertex(1,1)-0.5 1 1], ...
           'Curvature', [1 1], 'Parent', handles.axes_FilmArea)
 
+% Find critical angle of bias
+% [I_peak, theta_c] = max(I_r);
+% 
+% For each degree, get total value of radial distribution w/ 1/r^2 weight
+theta_c = 0; I_px = r*dpi/25.4;
+Ir_min = 0;
+for theta_deg=1:360
+    % Radians
+    theta_i = theta_deg*pi/180;
+    
+    % Loop through weighted angular analyses
+    for i=1:I_px
+        Ir_weighted(i) = Film_Area(floor(vertex(2,rgb_i)-i*sin(theta_c)), floor(vertex(1,rgb_i)+i*cos(theta_c)), rgb_i)/((i*25.4/dpi)^2);
+    end
+    
+    % Check for more optimized angle by totally lower grayscale across radius
+    if ( Ir_min == 0 )
+        Ir_min = sum(Ir_weighted);
+    end
+    if ( sum(Ir_weighted) <= Ir_min )
+        theta_c = theta_i;
+    end
+end
+
+% Draw line from vertex to radial edge
+radialLine = line([vertex(2,rgb_i) vertex(2,rgb_i) + r_px*cos(theta_c)], [vertex(1,rgb_i) vertex(1,rgb_i)-r_px*sin(theta_c)]);
+set(radialLine, 'Parent', handles.axes_FilmArea);
+      
 % Update vertex text
 vertex_str = strcat('(', num2str(vertex(2,1)), ',', num2str(vertex(1,1)), ')');
 set(handles.text_vertex, 'String', vertex_str);
@@ -44,10 +77,9 @@ set(handles.text_vertex, 'String', vertex_str);
 
 function plot_OD(hObject, handles)
 % Acquire vars
-global Film_Area vertex I_r;
+global Film_Area vertex I_r dpi;
 r = str2double(get(handles.var_r,'String'));
 rTol = str2double(get(handles.var_rTol,'String'))/1000;
-dpi = str2double(get(handles.var_dpi,'String'));
 r_px = r*dpi/25.4; r_pxTol = rTol*dpi/25400; % get r +- rTol in px
 rgb = get(handles.text_rgb, 'String');
 if ( strcmp(rgb,'Red') ) rgb_i=1; elseif ( strcmp(rgb, 'Green') ) rgb_i=2; else rgb_i=3; end
@@ -98,13 +130,26 @@ xlabel(handles.axes_OD, 'Degrees')
 ylabel(handles.axes_OD, 'Grayscale (abs)')
 
 
-
+%% GUI FUNCTIONS
 % --- Executes just before gfrgb_gui is made visible.
 function gfrgb_gui_OpeningFcn(hObject, eventdata, handles, varargin)
 % Acquire vars
-global Film_Area;
+global Film_Area vertex;
 
-% Precise tolerance slider step (0.01 to 1 in steps of 0.01)
+% % Vertex xy adjust slider step (0 to 1 in steps of 0.01)
+[Film_yMax Film_xMax] = size(Film_Area(:, :, 1));
+sliderStepY = [1 1]/(Film_yMax - 0);
+set(handles.slider_FilmVertexY, 'SliderStep', sliderStepY);
+sliderStepX = [1 1]/(Film_xMax - 0);
+set(handles.slider_FilmVertexX, 'SliderStep', sliderStepX);
+
+% Set slider max and vertex values
+set(handles.slider_FilmVertexY, 'max', Film_yMax);
+set(handles.slider_FilmVertexX, 'max', Film_xMax);
+set(handles.slider_FilmVertexY, 'value', Film_yMax - vertex(1,1));
+set(handles.slider_FilmVertexX, 'value', vertex(2,1));
+
+% Precise tolerance slider step (0.1 to 10 in steps of 0.1)
 sliderStep = [0.1 0.1]/(10 - 0.1);
 set(handles.slider_rTol, 'SliderStep', sliderStep);
 
@@ -133,6 +178,7 @@ end
 delete(handles.figure1)
 
 
+%% ITEMIZED CALLBACKS
 % --- Executes during object creation, after setting all properties
 function var_r_CreateFcn(hObject, eventdata, handles)
 if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
@@ -162,25 +208,28 @@ end
 
 
 % --- Executes during object creation, after setting all properties
-function var_dpi_CreateFcn(hObject, eventdata, handles)
-if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
-    set(hObject,'BackgroundColor','white');
-end
-
-
-% --- Executes during object creation, after setting all properties
-function slider_dpi_CreateFcn(hObject, eventdata, handles)
-if isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
-    set(hObject,'BackgroundColor',[.9 .9 .9]);
-end
-
-
-% --- Executes during object creation, after setting all properties
 function var_angleTo_CreateFcn(hObject, eventdata, handles)
 if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
     set(hObject,'BackgroundColor','white');
 end
 
+% --- Executes during object creation, after setting all properties.
+function var_angleFrom_CreateFcn(hObject, eventdata, handles)
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end
+
+% --- Executes during object creation, after setting all properties.
+function slider_FilmVertexY_CreateFcn(hObject, eventdata, handles)
+if isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor',[.9 .9 .9]);
+end
+
+% --- Executes during object creation, after setting all properties.
+function slider_FilmVertexX_CreateFcn(hObject, eventdata, handles)
+if isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor',[.9 .9 .9]);
+end
 
 % --- Executes on button press in toggle_red.
 function toggle_red_Callback(hObject, eventdata, handles)
@@ -236,7 +285,7 @@ if ( get(hObject, 'Value') == 1 )
     set(handles.toggle_red, 'Value', 0);
     set(handles.toggle_green, 'Value', 0);
     set(handles.text_rgb, 'String', 'Blue');
-    vertex_str = strcat('(', num2str(vertex(2,3)), ',', num2str(vertex(1,3)), ')');
+    vertex_str = strcat('(', num2str(vertex(2,3)), ', ', num2str(vertex(1,3)), ')');
     set(handles.text_vertex, 'String', vertex_str);
     
     % Display Blue channel of selected area
@@ -247,11 +296,48 @@ if ( get(hObject, 'Value') == 1 )
 end
 guidata(hObject, handles);
 
+% --- Executes on slider movement.
+function slider_FilmVertexY_Callback(hObject, eventdata, handles)
+% Acquire vars
+global Film_Area vertex;
+rgb = get(handles.text_rgb, 'String');
+if ( strcmp(rgb,'Red') ) rgb_i=1; elseif ( strcmp(rgb, 'Green') ) rgb_i=2; else rgb_i=3; end
+
+% Get value from slider and change vertex
+[Film_yMax Film_xMax] = size(Film_Area(:, :, 1));
+sliderY = get(hObject,'Value');
+if ( sliderY <= Film_yMax && sliderY >= 0 ); vertex(1, rgb_i) = Film_yMax - sliderY; end
+
+% Display R/G/B channel of selected area
+imshow(Film_Area(:,:,rgb_i), 'Parent', handles.axes_FilmArea);
+hold on;
+circleDraw(hObject, handles)
+hold off;
+guidata(hObject, handles);
+
+% --- Executes on slider movement.
+function slider_FilmVertexX_Callback(hObject, eventdata, handles)
+% Acquire vars
+global Film_Area vertex;
+rgb = get(handles.text_rgb, 'String');
+if ( strcmp(rgb,'Red') ) rgb_i=1; elseif ( strcmp(rgb, 'Green') ) rgb_i=2; else rgb_i=3; end
+
+% Get value from slider and change vertex
+[Film_yMax Film_xMax] = size(Film_Area(:, :, 1));
+sliderX = get(hObject,'Value');
+if ( sliderX <= Film_xMax && sliderX >= 0 ); vertex(2, rgb_i) = sliderX; end
+
+% Display R/G/B channel of selected area
+imshow(Film_Area(:,:,rgb_i), 'Parent', handles.axes_FilmArea);
+hold on;
+circleDraw(hObject, handles)
+hold off;
+guidata(hObject, handles);
 
 % --- Executes on slider_r movement
 function slider_r_Callback(hObject, eventdata, handles)
 % Acquire vars
-global Film_Area
+global Film_Area;
 slider_r = get(hObject,'Value');
 rgb = get(handles.text_rgb, 'String');
 if ( strcmp(rgb,'Red') ) rgb_i=1; elseif ( strcmp(rgb, 'Green') ) rgb_i=2; else rgb_i=3; end
@@ -281,7 +367,7 @@ end
 function slider_rTol_Callback(hObject, eventdata, handles)
 % Acquire vars
 global Film_Area
-slider_rTol = get(hObject,'Value');
+slider_rTol = sprintf('%0.1f', get(hObject,'Value'));
 rgb = get(handles.text_rgb, 'String');
 if ( strcmp(rgb,'Red') ) rgb_i=1; elseif ( strcmp(rgb, 'Green') ) rgb_i=2; else rgb_i=3; end
 set(handles.var_rTol, 'String', slider_rTol);
@@ -316,22 +402,13 @@ if ( angleTo ~= floor(angleTo) )
 end
 
 
-% --- Executes on slider_dpi movement
-function slider_dpi_Callback(hObject, eventdata, handles)
-% dpi++
-slider_dpi = get(hObject,'Value');
-set(handles.var_dpi,'String', slider_dpi);
-guidata(hObject, handles);
-
-
 % --- Executes on button press in button_recalculate.
 function button_recalculate_Callback(hObject, eventdata, handles)
-global Film_Area
+global Film_Area dpi
 % Acquire state variables
 slider_r_max = get(handles.slider_r, 'Max');
 r = str2double(get(handles.var_r,'String'));
 rTol = str2double(get(handles.var_rTol,'String'));
-dpi = str2double(get(handles.var_dpi,'String'));
 rgb = get(handles.text_rgb, 'String');
 if ( strcmp(rgb,'Red') ) rgb_i=1; elseif ( strcmp(rgb, 'Green') ) rgb_i=2; else rgb_i=3; end
 % Angles as well, if selected
@@ -350,16 +427,12 @@ if ( isnan(rTol) )
     set(handles.var_rTol,'String', 1);
     errordlg('Tolerance must be a number', 'Error');
 end
-if ( isnan(dpi) )
-    set(handles.var_dpi,'String', 72);
-    errordlg('dpi must be a number', 'Error');
-end
 if ( isnan(angleFrom) )
-    set(handles.var_dpi,'String', 0);
+    set(handles.var_angleFrom,'String', 0);
     errordlg('Initial angle must be a number', 'Error');
 end
 if ( isnan(angleTo) )
-    set(handles.var_dpi,'String', 360);
+    set(handles.var_angleTo,'String', 360);
     errordlg('Final angle must be a number', 'Error');
 end
 
@@ -391,27 +464,59 @@ ContourFig = figure('Name', 'contourPlot'); contourPlot = gca;
 contour(Film_Area(:, :, rgb_i));
 xlabel(contourPlot, 'x (relative to selection)')
 ylabel(contourPlot, 'y (relative to selection)')
+title(contourPlot, 'Contour map of exposure')
 set(contourPlot, 'YDir', 'rev')
 
 
 % --- Executes on button press in button_crit.
 function button_crit_Callback(hObject, eventdata, handles)
 %Acquire vars
-global Film_Area I_r;
-angleFrom = str2num(get(handles.angleFrom, 'String'));
-angleTo = str2num(get(handles.angleFromTo, 'String'));
+global Film_Area vertex dpi;
+r = str2double(get(handles.var_r,'String'));
+rgb = get(handles.text_rgb, 'String');
+if ( strcmp(rgb,'Red') ) rgb_i=1; elseif ( strcmp(rgb, 'Green') ) rgb_i=2; else rgb_i=3; end
+dpi = str2double(get(handles.var_dpi,'String')); I_px = r*dpi/25.4;
+angleFrom = str2num(get(handles.var_angleFrom, 'String'));
+angleTo = str2num(get(handles.var_angleTo, 'String'));
 
 % Find critical angle of bias
-[I_peak, theta_c] = max(I_r);
+% [I_peak, theta_c] = max(I_r);
+% 
+% For each degree, get total value of radial distribution w/ 1/r^2 weight
+theta_c = 0;
+Ir_min = 65536*I_px;
+for theta_deg=1:360
+    % Radians
+    theta_i = theta_deg*pi/180;
+    
+    % Loop through weighted angular analyses
+    for i=1:I_px
+        Ir_weighted(i) = Film_Area( round(vertex(2,rgb_i)-i*sin(theta_c)), round(vertex(1,rgb_i)+i*cos(theta_c)), rgb_i)/((i*25.4/dpi)^2);
+    end
+    
+    % Check for more optimized angle by totally lower grayscale across radius
+    if ( sum(Ir_weighted) <= Ir_min )
+        theta_c = theta_i;
+    end
+end
+
+% Acquire dataset of intensity
+for i=0:I_px
+    I_theta(i+1) = Film_Area( round(vertex(2,rgb_i)-i*sin(theta_c)), round(vertex(1,rgb_i)+i*cos(theta_c)), rgb_i);
+end
+
+% Acquire dataset of intensity
+I_px = r*dpi/25.4;
+for i=0:I_px
+    I_theta(i+1) = Film_Area(vertex(2,rgb_i)-i*sin(theta_c), vertex(1,rgb_i)+i*cos(theta_c), rgb_i);
+end
 
 % Create plot of I(r) for theta=theta_c
-
-
-% --- Executes during object creation, after setting all properties.
-function var_angleFrom_CreateFcn(hObject, eventdata, handles)
-if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
-    set(hObject,'BackgroundColor','white');
-end
+IrFig = figure('Name', 'seedIntensityPlot'); seedIntensityPlot = gca;
+plot(I_theta)
+xlabel(seedIntensityPlot, 'r (px)')
+ylabel(seedIntensityPlot, 'Grayscale (abs)')
+title(seedIntensityPlot, 'Intensity perpendicular to tilt')
 
 
 % --- Executes when selected object is changed in source_buttons.
@@ -434,3 +539,50 @@ else
     set(handles.button_crit, 'Enable', 'off');
     guidata(hObject, handles);
 end
+
+
+% --- Executes on button press in button_print.
+function button_print_Callback(hObject, eventdata, handles)
+% Acquire vars
+global vertex Film_Area;
+r = str2double(get(handles.var_r, 'String'));
+rTol = str2double(get(handles.var_rTol, 'String'));
+rgb = get(handles.text_rgb, 'String');
+if ( strcmp(rgb, 'Red') ) rgb_i=1; elseif ( strcmp(rgb, 'Green') ) rgb_i=2; else rgb_i=3; end
+
+% Create data directory: get date and time
+var_now = clock;
+data_dir_string = strcat(num2str(var_now(1)), '-', num2str(var_now(3)), '-', ...
+                         num2str(var_now(2)), '_', num2str(var_now(4)), '-', ...
+                         num2str(var_now(5)), '-', num2str(floor(var_now(6))));
+mkdir(data_dir_string);
+
+% Output vars to text file in data dir
+datafile = strcat(data_dir_string, '/vars.txt');
+datafileID = fopen(datafile, 'wt');
+datafile_vars = strcat('Vertex: (', num2str(vertex(2, rgb_i)), ', ', num2str(vertex(1, rgb_i)), ')\n');
+fprintf(datafileID, '%s Channel\n', rgb);
+fprintf(datafileID, datafile_vars);
+fprintf(datafileID,'Radius: %.2f +/- %.2f mm\n', r, rTol);
+fclose(datafileID);
+
+% Output OD fig in data dir
+datafile = strcat(data_dir_string, '/OD_theta.fig');
+fh = figure;
+opos = get(handles.axes_OD, 'outerposition');
+set(handles.axes_OD, 'outerposition', [0 0 1 1]);
+copyobj(handles.axes_OD, fh);
+saveas(fh, datafile, 'fig');
+set(handles.axes_OD, 'outerposition', opos);
+close(fh);
+
+% Reconstruct contour plot and save
+ContourFig = figure('Name', 'contourPlot'); contourPlot = gca;
+contour(Film_Area(:, :, rgb_i));
+xlabel(contourPlot, 'x (relative to selection)')
+ylabel(contourPlot, 'y (relative to selection)')
+title(contourPlot, 'Contour map of exposure')
+set(contourPlot, 'YDir', 'rev')
+datafile = strcat(data_dir_string, '/Contour.fig');
+saveas(ContourFig, datafile, 'fig');
+close(fh);

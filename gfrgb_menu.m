@@ -160,7 +160,7 @@ guidata(hObject, handles);
 % --- Executes on button press in text_calculate.
 function text_calculate_Callback(hObject, eventdata, handles)
 % Acquire vars
-global Film_Area vertex Film_FileName rect;
+global Film_Area vertex Film_FileName rect dpi;
 
 % Check for image in axes
 if isempty(Film_FileName)
@@ -197,6 +197,7 @@ else % Check with user if unzoomed
                      ( vertex(1, rgb_i), vertex(2, rgb_i) )
     %}
     % Gather/declare vars
+    dpi = str2double(get(handles.var_dpi,'String'));
     CourseAreaSide = str2num(get(handles.var_side,'String'));
     MxRows = length(Film_Area(:,1,1))-(CourseAreaSide-1);
     MxCols = length(Film_Area(1,:,1))-(CourseAreaSide-1);
