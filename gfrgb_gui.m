@@ -475,7 +475,6 @@ global Film_Area vertex dpi;
 r = str2double(get(handles.var_r,'String'));
 rgb = get(handles.text_rgb, 'String');
 if ( strcmp(rgb,'Red') ) rgb_i=1; elseif ( strcmp(rgb, 'Green') ) rgb_i=2; else rgb_i=3; end
-dpi = str2double(get(handles.var_dpi,'String')); I_px = r*dpi/25.4;
 angleFrom = str2num(get(handles.var_angleFrom, 'String'));
 angleTo = str2num(get(handles.var_angleTo, 'String'));
 
