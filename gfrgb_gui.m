@@ -77,7 +77,7 @@ set(handles.text_vertex, 'String', vertex_str);
 
 function plot_OD(hObject, handles)
 % Acquire vars
-global Film_Area vertex I_r dpi;
+global Film_Area vertex I_r I_avg dpi;
 r = str2double(get(handles.var_r,'String'));
 rTol = str2double(get(handles.var_rTol,'String'))/1000;
 r_px = r*dpi/25.4; r_pxTol = rTol*dpi/25400; % get r +- rTol in px
@@ -444,11 +444,11 @@ end
 % Display R/G/B channel of selected area
 imshow(Film_Area(:,:,rgb_i), 'Parent', handles.axes_FilmArea);
 hold on;
-circleDraw(hObject, handles)
+circleDraw(hObject, handles);
 hold off;
 
 % Construct Optical Density plot
-plot_OD(hObject, handles)
+plot_OD(hObject, handles);
 guidata(hObject, handles);
 
 
@@ -543,15 +543,17 @@ end
 % --- Executes on button press in button_print.
 function button_print_Callback(hObject, eventdata, handles)
 % Acquire vars
-global vertex Film_Area;
+global vertex Film_Area I_r I_avg;
 r = str2double(get(handles.var_r, 'String'));
 rTol = str2double(get(handles.var_rTol, 'String'));
 rgb = get(handles.text_rgb, 'String');
 if ( strcmp(rgb, 'Red') ) rgb_i=1; elseif ( strcmp(rgb, 'Green') ) rgb_i=2; else rgb_i=3; end
+theta=0:1:360;
 
 % Create data directory: get date and time
 var_now = clock;
-data_dir_string = strcat(num2str(var_now(1)), '-', num2str(var_now(3)), '-', ...
+data_dir_string = strcat('data_', ...
+                         num2str(var_now(1)), '-', num2str(var_now(3)), '-', ...
                          num2str(var_now(2)), '_', num2str(var_now(4)), '-', ...
                          num2str(var_now(5)), '-', num2str(floor(var_now(6))));
 mkdir(data_dir_string);
@@ -565,14 +567,37 @@ fprintf(datafileID, datafile_vars);
 fprintf(datafileID,'Radius: %.2f +/- %.2f mm\n', r, rTol);
 fclose(datafileID);
 
+% Save I_r and I_avg as own var files
+datafile = strcat(data_dir_string, '/I_r.txt');
+datafileID = fopen(datafile, 'wt');
+fprintf(datafileID,'# theta [deg]  I_r\n');
+for i=1:361
+  fprintf(datafileID,'%d  %d\n', i-1, I_r(i));
+end
+fclose(datafileID);
+
+datafile = strcat(data_dir_string, '/I_avg.txt');
+datafileID = fopen(datafile, 'wt');
+fprintf(datafileID,'# theta [deg]  I_avg\n');
+for i=1:361
+  fprintf(datafileID,'%d  %d\n', i-1, I_avg(i));
+end
+fclose(datafileID);
+
 % Output OD fig in data dir
 datafile = strcat(data_dir_string, '/OD_theta.fig');
-fh = figure;
-opos = get(handles.axes_OD, 'outerposition');
-set(handles.axes_OD, 'outerposition', [0 0 1 1]);
-copyobj(handles.axes_OD, fh);
+fh = figure('Name', 'OD_Plot'); OD_Plot = gca;
+% opos = get(handles.axes_OD, 'outerposition');
+% set(handles.axes_OD, 'outerposition', [0 0 1 1]);
+% h_OD = findobj(gcf, 'Tag', 'axes_OD');
+% copyobj(h_OD, fh);
+plot(min(theta):max(theta), I_r, 'b-', 'Parent', OD_Plot); hold on;
+plot(min(theta):max(theta), I_avg, 'r-', 'Parent', OD_Plot); hold off;
+axis(OD_Plot, [min(theta) max(theta) min(min(I_r(:,1), I_avg(:,1))) max(max(I_r(:,1), I_avg(:,1)))]);
+xlabel(OD_Plot, 'Degrees')
+ylabel(OD_Plot, 'Grayscale (abs)')
 saveas(fh, datafile, 'fig');
-set(handles.axes_OD, 'outerposition', opos);
+% set(handles.axes_OD, 'outerposition', opos);
 close(fh);
 
 % Reconstruct contour plot and save
@@ -584,4 +609,4 @@ title(contourPlot, 'Contour map of exposure')
 set(contourPlot, 'YDir', 'rev')
 datafile = strcat(data_dir_string, '/Contour.fig');
 saveas(ContourFig, datafile, 'fig');
-close(fh);
+close(ContourFig);
