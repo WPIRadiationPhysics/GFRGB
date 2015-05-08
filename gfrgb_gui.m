@@ -561,7 +561,7 @@ mkdir(data_dir_string);
 % Output vars to text file in data dir
 datafile = strcat(data_dir_string, '/vars.txt');
 datafileID = fopen(datafile, 'wt');
-datafile_vars = strcat('Vertex: (', num2str(vertex(2, rgb_i)), ', ', num2str(vertex(1, rgb_i)), ')\n');
+datafile_vars = strcat('Vertex: ', num2str(Film_Area(vertex(2, rgb_i), vertex(1, rgb_i), rgb_i)), ' at (', num2str(vertex(2, rgb_i)), ', ', num2str(vertex(1, rgb_i)), ')\n');
 fprintf(datafileID, '%s Channel\n', rgb);
 fprintf(datafileID, datafile_vars);
 fprintf(datafileID,'Radius: %.2f +/- %.2f mm\n', r, rTol);
