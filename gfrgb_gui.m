@@ -25,7 +25,7 @@ function gfrgb_gui_OutputFcn(hObject, eventdata, handles, varargin)
 % Draw 3 circles: of selected radius, and +/- tolerance
 function circleDraw(hObject, handles)
 % Acquire vars
-global vertex dpi Film_Area;
+global vertex dpi Film_Area theta_c;
 r = str2double(get(handles.var_r, 'String'));
 rTol = str2double(get(handles.var_rTol, 'String'));
 r_px = r*dpi/25.4; r_pxTol = rTol*dpi/25400; % get r +- rTol in px
@@ -125,7 +125,8 @@ end
 % Plot I(theta) for r=radius (blue) and r=radius +/- tolerance (red)
 plot(min(theta):max(theta), I_r, 'b-', 'Parent', handles.axes_OD); hold on;
 plot(min(theta):max(theta), I_avg, 'r-', 'Parent', handles.axes_OD); hold off;
-axis(handles.axes_OD, [min(theta) max(theta) min(min(I_r(:,1),I_avg(:,1))) max(max(I_r(:,1),I_avg(:,1)))]);
+% I_r, I_avg carry a zeroed column as a result of plotting
+axis(handles.axes_OD, [min(theta) max(theta) min(min(I_r(:,1), I_avg(:,1))) max(max(I_r(:,1), I_avg(:,1)))]);
 xlabel(handles.axes_OD, 'Degrees')
 ylabel(handles.axes_OD, 'Grayscale (abs)')
 
@@ -471,7 +472,7 @@ set(contourPlot, 'YDir', 'rev')
 % --- Executes on button press in button_crit.
 function button_crit_Callback(hObject, eventdata, handles)
 %Acquire vars
-global Film_Area vertex dpi;
+global Film_Area vertex dpi theta_c;
 r = str2double(get(handles.var_r,'String'));
 rgb = get(handles.text_rgb, 'String');
 if ( strcmp(rgb,'Red') ) rgb_i=1; elseif ( strcmp(rgb, 'Green') ) rgb_i=2; else rgb_i=3; end
@@ -543,7 +544,7 @@ end
 % --- Executes on button press in button_print.
 function button_print_Callback(hObject, eventdata, handles)
 % Acquire vars
-global vertex Film_Area I_r I_avg;
+global vertex Film_Area I_r I_avg rect theta_c;
 r = str2double(get(handles.var_r, 'String'));
 rTol = str2double(get(handles.var_rTol, 'String'));
 rgb = get(handles.text_rgb, 'String');
@@ -561,18 +562,25 @@ mkdir(data_dir_string);
 % Output vars to text file in data dir
 datafile = strcat(data_dir_string, '/vars.txt');
 datafileID = fopen(datafile, 'wt');
-datafile_vars = strcat('Vertex: ', num2str(Film_Area(vertex(2, rgb_i), vertex(1, rgb_i), rgb_i)), ' at (', num2str(vertex(2, rgb_i)), ', ', num2str(vertex(1, rgb_i)), ')\n');
+datafile_vars = strcat('Film Area top-left located at (x,y)=(', num2str(round(rect(1))), ',', num2str(round(rect(2))), ')\n');
+fprintf(datafileID, datafile_vars);
 fprintf(datafileID, '%s Channel\n', rgb);
+datafile_vars = strcat('Vertex: ', num2str(Film_Area(vertex(2, rgb_i), vertex(1, rgb_i), rgb_i)), ' at (', num2str(vertex(2, rgb_i)), ', ', num2str(vertex(1, rgb_i)), ')\n');
 fprintf(datafileID, datafile_vars);
 fprintf(datafileID,'Radius: %.2f +/- %.2f mm\n', r, rTol);
 fclose(datafileID);
+
+% Realign I_r, I_avg s.t. theta_c is 90 deg via circleshift
+deltaTheta_c = floor(90-(theta_c*180/pi));
+I_r_aligned = circshift(I_r(:,1), deltaTheta_c);
+I_avg_aligned = circshift(I_avg(:,1), deltaTheta_c);
 
 % Save I_r and I_avg as own var files
 datafile = strcat(data_dir_string, '/I_r.txt');
 datafileID = fopen(datafile, 'wt');
 fprintf(datafileID,'# theta [deg]  I_r\n');
 for i=1:361
-  fprintf(datafileID,'%d  %d\n', i-1, I_r(i));
+  fprintf(datafileID,'%d  %d\n', i-1, I_r_aligned(i));
 end
 fclose(datafileID);
 
@@ -580,7 +588,7 @@ datafile = strcat(data_dir_string, '/I_avg.txt');
 datafileID = fopen(datafile, 'wt');
 fprintf(datafileID,'# theta [deg]  I_avg\n');
 for i=1:361
-  fprintf(datafileID,'%d  %d\n', i-1, I_avg(i));
+  fprintf(datafileID,'%d  %d\n', i-1, I_avg_aligned(i));
 end
 fclose(datafileID);
 
@@ -591,9 +599,9 @@ fh = figure('Name', 'OD_Plot'); OD_Plot = gca;
 % set(handles.axes_OD, 'outerposition', [0 0 1 1]);
 % h_OD = findobj(gcf, 'Tag', 'axes_OD');
 % copyobj(h_OD, fh);
-plot(min(theta):max(theta), I_r, 'b-', 'Parent', OD_Plot); hold on;
-plot(min(theta):max(theta), I_avg, 'r-', 'Parent', OD_Plot); hold off;
-axis(OD_Plot, [min(theta) max(theta) min(min(I_r(:,1), I_avg(:,1))) max(max(I_r(:,1), I_avg(:,1)))]);
+plot(min(theta):max(theta), I_r_aligned, 'b-', 'Parent', OD_Plot); hold on;
+plot(min(theta):max(theta), I_avg_aligned, 'r-', 'Parent', OD_Plot); hold off;
+axis(OD_Plot, [min(theta) max(theta) min(min(I_r_aligned(:), I_avg_aligned(:))) max(max(I_r_aligned(:), I_avg_aligned(:)))]);
 xlabel(OD_Plot, 'Degrees')
 ylabel(OD_Plot, 'Grayscale (abs)')
 saveas(fh, datafile, 'fig');
