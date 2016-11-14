@@ -45,30 +45,28 @@ function button_tifffs_Callback(hObject, eventdata, handles)
 global Film_Img Film_Area Film_Area_Prev Film_FileName rect;
 
 % Image Single-selection, set as cell array
-[Film_FileName, Film_FilePath] = uigetfile('*.tif', ...
+[Film_FileName, Film_FilePath, Img_Index] = uigetfile('*.tif', ...
     'Choose image file', 'MultiSelect', 'off');
 
 if ~isempty(Film_FileName)
-    Film_FileName = cellstr(strcat(Film_FilePath, '\', Film_FileName));
+    Film_FileName = strcat(Film_FilePath, Film_FileName);
 
     % Check filenames for tiff-type extension
     validFile = 1;
-    for i = 1:length(Film_FileName)
-        [dirPath, fileBaseName{i}, extType] = fileparts(Film_FileName{i});
-        if (strcmpi(extType, '.tif') == 0)
-            status_string = 'Selection is not a valid TIFF file';
-            validFile = 0;
-            return
-        else
-            Film_FileName{i} = strcat(dirPath, fileBaseName{i}, extType);
-        end
+    [dirPath, fileBaseName, extType] = fileparts(Film_FileName);
+    if (strcmpi(extType, '.tif') == 0)
+        status_string = 'Selection is not a valid TIFF file';
+        validFile = 0;
+        return
+    else
+        Film_FileName = strcat(dirPath, '/', fileBaseName, extType);
     end
     
     if ( validFile )
         % Display image
-        Film_Img = imread(Film_FileName{1}); % Or only this one
+        Film_Img = imread(Film_FileName); % Or only this one
         imshow(Film_Img, 'Parent', handles.axes_FileImg);
-        set(handles.text_filename, 'String', Film_FileName{1});
+        set(handles.text_filename, 'String', Film_FileName);
         status_string = 'Image loaded';
         rect = 0; Film_Area = Film_Img;
         Film_Area_Prev = Film_Area;
