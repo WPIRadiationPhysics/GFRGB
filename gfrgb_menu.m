@@ -219,7 +219,9 @@ else % Check with user if unzoomed
       for j = 1:MxRows
         for i = 1:MxCols
           if (Mx(j, i, channelNum) == vertex_area(3, channelNum))
-          vertex_area(1, channelNum) = j; vertex_area(2,  channelNum) = i;
+            if ( ( i>5 || i<MxCols-5 ) && ( j>5 || j<MxRows-5 ) )
+              vertex_area(1, channelNum) = j; vertex_area(2,  channelNum) = i;
+            end
           end
         end
       end
