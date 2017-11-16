@@ -24,7 +24,7 @@ function gfrgb_gui_OutputFcn(hObject, eventdata, handles, varargin)
 %% AUXILIARY FUNCTIONS
 % Draw 3 circles: of selected radius, and +/- tolerance
 function circleDraw(hObject, handles)
-% Acquire vars
+% Acquire global and GUI variables
 global vertex dpi Film_Area;
 r = str2double(get(handles.var_r, 'String'));
 rTol = str2double(get(handles.var_rTol, 'String'));
@@ -45,7 +45,7 @@ rectangle('Position', [vertex(2,1)-0.5 vertex(1,1)-0.5 1 1], ...
 % Find critical angle of bias
 % [I_peak, theta_c] = max(I_r);
 % 
-% For each degree, get total value of radial distribution w/ 1/r^2 weight
+% For each degree, get total value of radial distribution
 theta_c = 0; I_px = r*dpi/25.4;
 Ir_min = 0;
 for theta_deg=1:360
@@ -54,7 +54,16 @@ for theta_deg=1:360
     
     % Loop through weighted angular analyses
     for i=1:I_px
-        Ir_weighted(i) = Film_Area(floor(vertex(2,rgb_i)-i*sin(theta_c)), floor(vertex(1,rgb_i)+i*cos(theta_c)), rgb_i)/((i*25.4/dpi)^2);
+        if (vertex(2,rgb_i)-i*sin(theta_i) > 0 && vertex(2,rgb_i)-i*sin(theta_i) < length(Film_Area(:,1,1)))
+            if (vertex(1,rgb_i)+i*cos(theta_i) > 0 && vertex(1,rgb_i)+i*cos(theta_i) < length(Film_Area(1,:,1)))
+                Ir_weighted(i) = Film_Area(floor(vertex(2,rgb_i)-i*sin(theta_i)), floor(vertex(1,rgb_i)+i*cos(theta_i)), rgb_i);
+            else
+                Ir_weighted(i) = 65536;
+            end
+        else
+          Ir_weighted(i) = 65536;
+        end
+        % /((i*25.4/dpi)^2);
     end
     
     % Check for more optimized angle by totally lower grayscale across radius
@@ -62,6 +71,7 @@ for theta_deg=1:360
         Ir_min = sum(Ir_weighted);
     end
     if ( sum(Ir_weighted) <= Ir_min )
+        Ir_min = sum(Ir_weighted);
         theta_c = theta_i;
     end
 end
@@ -102,7 +112,7 @@ I_avg = zeros(I_numpoints); I_r = zeros(I_numpoints);
 rInc = 0.001/1000; rSteps = 2*rTol/rInc;
 
 % Loop through whole angle;
-for i_theta=1:1:I_numpoints;
+for i_theta=1:1:I_numpoints
     % Get angle in radians
     theta_rad = theta(i_theta)*pi/180;
     for rStep_i = 0:rSteps
@@ -137,7 +147,7 @@ function gfrgb_gui_OpeningFcn(hObject, eventdata, handles, varargin)
 global Film_Area vertex;
 
 % % Vertex xy adjust slider step (0 to 1 in steps of 0.01)
-[Film_yMax Film_xMax] = size(Film_Area(:, :, 1));
+[Film_yMax, Film_xMax] = size(Film_Area(:, :, 1));
 sliderStepY = [1 1]/(Film_yMax - 0);
 set(handles.slider_FilmVertexY, 'SliderStep', sliderStepY);
 sliderStepX = [1 1]/(Film_xMax - 0);
