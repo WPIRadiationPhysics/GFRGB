@@ -121,16 +121,24 @@ for i_theta=1:1:I_numpoints
             r_pxi = (r - rTol + rStep_i*rInc)*dpi/25.4;
             
             % Find closest pixel, assume value
-            I_y = round(vertex(1, rgb_i) - r_pxi*sin(theta_rad));
-            I_x = round(vertex(2, rgb_i) + r_pxi*cos(theta_rad));
+            if (round(vertex(2, rgb_i) + r_pxi*cos(theta_rad)) > 0 && round(vertex(2, rgb_i) + r_pxi*cos(theta_rad)) < length(Film_Area(:,1,1))) {
+                if (round(vertex(1, rgb_i) - r_pxi*sin(theta_rad)) > 0 && round(vertex(1, rgb_i) - r_pxi*sin(theta_rad)) < length(Film_Area(1,:,1))) {
+                    I_y = round(vertex(1, rgb_i) - r_pxi*sin(theta_rad));
+                    I_x = round(vertex(2, rgb_i) + r_pxi*cos(theta_rad));
+                }
+            }
             I_avg(i_theta) = double(I_avg(i_theta) + Film_Area(I_y, I_x, rgb_i)/(rSteps+1));
         catch
             continue;
         end
     end
-    I_y = round(vertex(1, rgb_i) - r_px*sin(theta_rad));
-    I_x = round(vertex(2, rgb_i) + r_px*cos(theta_rad));
-    I_r(i_theta) = Film_Area(I_y, I_x, rgb_i);
+    if (round(vertex(2, rgb_i) + r_pxi*cos(theta_rad)) > 0 && round(vertex(2, rgb_i) + r_pxi*cos(theta_rad)) < length(Film_Area(:,1,1))) {
+        if (round(vertex(1, rgb_i) - r_pxi*sin(theta_rad)) > 0 && round(vertex(1, rgb_i) - r_pxi*sin(theta_rad)) < length(Film_Area(1,:,1))) {
+            I_y = round(vertex(1, rgb_i) - r_px*sin(theta_rad));
+            I_x = round(vertex(2, rgb_i) + r_px*cos(theta_rad));
+            I_r(i_theta) = Film_Area(I_y, I_x, rgb_i);
+        }
+    }
 end
 % Plot I(theta) for r=radius (blue) and r=radius +/- tolerance (red)
 plot(min(theta):max(theta), I_r, 'b-', 'Parent', handles.axes_OD); hold on;
